@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UrbanGlow — Tienda de Moda</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .font-serif { font-family: 'Playfair Display', serif; }
+    .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
+    .badge-disponible { background: #d1fae5; color: #065f46; }
+    .badge-agotado    { background: #fee2e2; color: #991b1b; }
+    .pulse-dot::before {
+      content: '';
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+    .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- HEADER -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">👗</span>
+        <div>
+          <h1 class="font-serif text-2xl font-bold text-gray-900">UrbanGlow</h1>
+          <p class="text-xs text-gray-500 tracking-widest uppercase">Tienda de Moda</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-6">
+        <span id="api-status-badge" class="text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-500">
+          Conectando...
+        </span>
+        <span class="text-sm text-gray-400" id="last-update">—</span>
+        <button onclick="loadAll()" class="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+          Actualizar
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-10 space-y-10">
+
+    <!-- STATS ROW -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="stats-row">
+      <div class="bg-white rounded-2xl p-5 shadow-sm skeleton h-24"></div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm skeleton h-24"></div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm skeleton h-24"></div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm skeleton h-24"></div>
+    </div>
+
+    <!-- SEARCH BAR -->
+    <div class="bg-white rounded-2xl shadow-sm p-6">
+      <h2 class="font-serif text-xl font-bold text-gray-800 mb-4">Buscar productos</h2>
+      <div class="flex gap-3">
+        <input id="search-input" type="text" placeholder="Ej: vestido, negro, sandalia..."
+          class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          onkeydown="if(event.key==='Enter') search()" />
+        <button onclick="search()"
+          class="bg-gray-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-gray-700 transition-colors">
+          Buscar
+        </button>
+        <button onclick="clearSearch()"
+          class="border border-gray-200 text-gray-600 px-4 py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+          Limpiar
+        </button>
+      </div>
+      <div id="search-time" class="mt-2 text-xs text-gray-400 hidden"></div>
+    </div>
+
+    <!-- CATEGORIES FILTER -->
+    <div>
+      <h2 class="font-serif text-2xl font-bold text-gray-800 mb-4">Categorías</h2>
+      <div id="categorias-container" class="flex flex-wrap gap-3">
+        <div class="skeleton h-10 w-28 rounded-full"></div>
+        <div class="skeleton h-10 w-28 rounded-full"></div>
+        <div class="skeleton h-10 w-28 rounded-full"></div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS GRID -->
+    <div>
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="font-serif text-2xl font-bold text-gray-800">
+          Catálogo <span id="productos-count" class="text-gray-400 text-lg font-normal"></span>
+        </h2>
+        <span id="active-filter" class="text-sm text-gray-500 hidden">
+          Filtrando por: <strong id="filter-label"></strong>
+        </span>
+      </div>
+      <div id="productos-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <!-- skeletons -->
+        <div class="skeleton rounded-2xl h-64"></div>
+        <div class="skeleton rounded-2xl h-64"></div>
+        <div class="skeleton rounded-2xl h-64"></div>
+        <div class="skeleton rounded-2xl h-64"></div>
+      </div>
+    </div>
+
+    <!-- CARRITO -->
+    <div class="bg-white rounded-2xl shadow-sm p-6">
+      <h2 class="font-serif text-2xl font-bold text-gray-800 mb-6">Carrito de compras</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Agregar al carrito -->
+        <div class="border border-gray-100 rounded-xl p-5">
+          <h3 class="font-semibold text-gray-700 mb-4 text-sm uppercase tracking-wide">Agregar producto</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs text-gray-500 mb-1 block">ID de sesión</label>
+              <input id="sesion-id" type="text" value="sesion-001"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
+            </div>
+            <div class="flex gap-3">
+              <div class="flex-1">
+                <label class="text-xs text-gray-500 mb-1 block">ID Producto</label>
+                <input id="carrito-producto-id" type="number" min="1" placeholder="Ej: 1"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
+              </div>
+              <div class="w-24">
+                <label class="text-xs text-gray-500 mb-1 block">Cantidad</label>
+                <input id="carrito-cantidad" type="number" min="1" value="1"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
+              </div>
+            </div>
+            <div class="flex gap-2 pt-1">
+              <button onclick="agregarAlCarrito()"
+                class="flex-1 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
+                Agregar al carrito
+              </button>
+              <button onclick="verCarrito()"
+                class="flex-1 border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                Ver total
+              </button>
+              <button onclick="vaciarCarrito()"
+                class="border border-red-200 text-red-500 px-4 py-2 rounded-lg text-sm hover:bg-red-50 transition-colors">
+                Vaciar
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Resumen del carrito -->
+        <div class="border border-gray-100 rounded-xl p-5">
+          <h3 class="font-semibold text-gray-700 mb-4 text-sm uppercase tracking-wide">Resumen del carrito</h3>
+          <div id="carrito-resultado" class="text-sm text-gray-400 text-center py-8">
+            Agrega productos para ver el resumen
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTES -->
+    <div class="bg-white rounded-2xl shadow-sm p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="font-serif text-2xl font-bold text-gray-800">Reportes de inventario</h2>
+        <button onclick="loadReportes()"
+          class="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+          Generar reporte
+        </button>
+      </div>
+      <div id="reportes-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="border border-gray-100 rounded-xl p-5 text-sm text-gray-400 text-center py-12">
+          Haz clic en "Generar reporte" para ver las estadísticas
+        </div>
+      </div>
+    </div>
+
+    <!-- LINKS PANEL -->
+    <div class="bg-gray-900 text-white rounded-2xl p-8">
+      <h2 class="font-serif text-xl font-bold mb-6">Panel de Observabilidad</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <a href="http://localhost:9090" target="_blank"
+          class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-colors">
+          <span class="text-2xl">📊</span>
+          <div>
+            <p class="font-semibold">Prometheus</p>
+            <p class="text-xs text-gray-400">localhost:9090</p>
+          </div>
+        </a>
+        <a href="http://localhost:3001" target="_blank"
+          class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-colors">
+          <span class="text-2xl">📈</span>
+          <div>
+            <p class="font-semibold">Grafana</p>
+            <p class="text-xs text-gray-400">localhost:3001 · admin/admin123</p>
+          </div>
+        </a>
+        <a href="http://localhost:8080/metrics" target="_blank"
+          class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-colors">
+          <span class="text-2xl">🔬</span>
+          <div>
+            <p class="font-semibold">Métricas raw</p>
+            <p class="text-xs text-gray-400">/metrics</p>
+          </div>
+        </a>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="text-center py-8 text-xs text-gray-400">
+    UrbanGlow API · <span id="footer-ts"></span>
+  </footer>
+
+<script>
+  const API = 'http://localhost:8080';
+  let activeCategory = null;
+
+  const CATEGORY_ICONS = {
+    'Vestidos':   '👗', 'Calzado':    '👠', 'Accesorios': '👜',
+    'Camisas':    '👔', 'Pantalones': '👖', 'Blazers':    '🧥'
+  };
+
+  async function fetchJSON(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }
+
+  async function loadHealth() {
+    try {
+      const data = await fetchJSON(`${API}/`);
+      const badge = document.getElementById('api-status-badge');
+      badge.className = 'text-sm font-medium px-3 py-1 rounded-full bg-green-100 text-green-700 pulse-dot';
+      badge.textContent = 'API activa';
+    } catch {
+      const badge = document.getElementById('api-status-badge');
+      badge.className = 'text-sm font-medium px-3 py-1 rounded-full bg-red-100 text-red-600';
+      badge.textContent = 'API no disponible';
+    }
+  }
+
+  async function loadStats(productos) {
+    const total = productos.length;
+    const disponibles = productos.filter(p => p.disponible).length;
+    const precios = productos.map(p => p.precio);
+    const promedio = (precios.reduce((a, b) => a + b, 0) / precios.length).toFixed(2);
+    const cats = [...new Set(productos.map(p => p.categoria))].length;
+
+    document.getElementById('stats-row').innerHTML = `
+      <div class="bg-white rounded-2xl p-5 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Productos</p>
+        <p class="text-3xl font-bold text-gray-900">${total}</p>
+        <p class="text-xs text-gray-400 mt-1">${disponibles} disponibles</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Categorías</p>
+        <p class="text-3xl font-bold text-gray-900">${cats}</p>
+        <p class="text-xs text-gray-400 mt-1">colecciones activas</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Precio promedio</p>
+        <p class="text-3xl font-bold text-gray-900">$${promedio}</p>
+        <p class="text-xs text-gray-400 mt-1">USD</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Agotados</p>
+        <p class="text-3xl font-bold text-red-500">${total - disponibles}</p>
+        <p class="text-xs text-gray-400 mt-1">sin stock</p>
+      </div>`;
+  }
+
+  async function loadCategorias() {
+    try {
+      const data = await fetchJSON(`${API}/api/categorias`);
+      const container = document.getElementById('categorias-container');
+      container.innerHTML = `
+        <button onclick="filterCategory(null)"
+          class="category-btn px-4 py-2 rounded-full border text-sm font-medium transition-colors ${!activeCategory ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:border-gray-900'}">
+          Todos
+        </button>
+        ${data.categorias.map(c => `
+          <button onclick="filterCategory('${c.nombre}')"
+            class="category-btn px-4 py-2 rounded-full border text-sm font-medium transition-colors ${activeCategory === c.nombre ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:border-gray-900'}">
+            ${CATEGORY_ICONS[c.nombre] || '🏷️'} ${c.nombre}
+            <span class="ml-1 text-xs opacity-60">(${c.totalProductos})</span>
+          </button>`).join('')}`;
+    } catch (e) {
+      console.error('Error cargando categorías:', e);
+    }
+  }
+
+  async function loadProductos(categoria) {
+    const url = categoria ? `${API}/api/productos?categoria=${encodeURIComponent(categoria)}` : `${API}/api/productos`;
+    const grid = document.getElementById('productos-grid');
+    grid.innerHTML = '<div class="skeleton rounded-2xl h-64"></div>'.repeat(8);
+
+    try {
+      const data = await fetchJSON(url);
+      renderProductos(data.productos);
+      document.getElementById('productos-count').textContent = `(${data.total})`;
+
+      const filterEl = document.getElementById('active-filter');
+      const labelEl = document.getElementById('filter-label');
+      if (categoria) {
+        filterEl.classList.remove('hidden');
+        labelEl.textContent = `${CATEGORY_ICONS[categoria] || ''} ${categoria}`;
+      } else {
+        filterEl.classList.add('hidden');
+      }
+    } catch (e) {
+      grid.innerHTML = `<div class="col-span-4 text-center py-16 text-gray-400">
+        <p class="text-4xl mb-3">⚠️</p>
+        <p>No se pudo conectar con la API</p>
+        <p class="text-xs mt-1">Verifica que docker-compose está corriendo</p>
+      </div>`;
+    }
+  }
+
+  function renderProductos(productos) {
+    const grid = document.getElementById('productos-grid');
+    if (!productos.length) {
+      grid.innerHTML = `<div class="col-span-4 text-center py-16 text-gray-400">
+        <p class="text-4xl mb-3">🔍</p><p>Sin resultados</p></div>`;
+      return;
+    }
+    grid.innerHTML = productos.map(p => `
+      <div class="bg-white rounded-2xl shadow-sm card-hover overflow-hidden">
+        <div class="h-48 flex items-center justify-center text-6xl" style="background: linear-gradient(135deg, #f9f0ff, #fce4ec)">
+          ${CATEGORY_ICONS[p.categoria] || '🛍️'}
+        </div>
+        <div class="p-4">
+          <span class="text-xs px-2 py-0.5 rounded-full ${p.disponible ? 'badge-disponible' : 'badge-agotado'} font-medium">
+            ${p.disponible ? '● Disponible' : '● Agotado'}
+          </span>
+          <h3 class="font-semibold text-gray-900 mt-2 text-sm leading-tight">${p.nombre}</h3>
+          <p class="text-xs text-gray-500 mt-1">${p.categoria} · ${p.color}</p>
+          <p class="text-xs text-gray-400 mt-1">Tallas: ${p.tallas}</p>
+          <div class="flex items-center justify-between mt-3">
+            <span class="text-lg font-bold text-gray-900">$${p.precio.toFixed(2)}</span>
+            <span class="text-xs text-gray-400">Stock: ${p.stock}</span>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  async function search() {
+    const q = document.getElementById('search-input').value.trim();
+    if (!q) { loadProductos(null); return; }
+
+    const grid = document.getElementById('productos-grid');
+    const timeEl = document.getElementById('search-time');
+    grid.innerHTML = '<div class="skeleton rounded-2xl h-64"></div>'.repeat(4);
+    timeEl.classList.add('hidden');
+    activeCategory = null;
+
+    const t0 = Date.now();
+    try {
+      const data = await fetchJSON(`${API}/api/buscar?q=${encodeURIComponent(q)}`);
+      const elapsed = Date.now() - t0;
+      renderProductos(data.resultados);
+      document.getElementById('productos-count').textContent = `(${data.total_resultados} resultados)`;
+      timeEl.textContent = `Búsqueda completada en ${elapsed}ms (tiempo BD: ${data.tiempo_busqueda_ms}ms)`;
+      timeEl.classList.remove('hidden');
+      document.getElementById('active-filter').classList.add('hidden');
+    } catch (e) {
+      grid.innerHTML = `<div class="col-span-4 text-center py-16 text-gray-400">
+        <p class="text-4xl mb-3">⚠️</p><p>Error en la búsqueda</p></div>`;
+    }
+    loadCategorias();
+  }
+
+  function clearSearch() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('search-time').classList.add('hidden');
+    activeCategory = null;
+    loadAll();
+  }
+
+  function filterCategory(cat) {
+    activeCategory = cat;
+    loadCategorias();
+    loadProductos(cat);
+  }
+
+  async function loadAll() {
+    document.getElementById('last-update').textContent = 'Actualizando...';
+    await Promise.all([loadHealth(), loadCategorias()]);
+    const data = await fetchJSON(`${API}/api/productos`).catch(() => ({ productos: [] }));
+    if (data.productos.length) loadStats(data.productos);
+    loadProductos(activeCategory);
+    const now = new Date();
+    document.getElementById('last-update').textContent =
+      `Actualizado: ${now.toLocaleTimeString('es-CO')}`;
+    document.getElementById('footer-ts').textContent =
+      now.toLocaleString('es-CO');
+  }
+
+  async function agregarAlCarrito() {
+    const sesionId = document.getElementById('sesion-id').value.trim() || 'sesion-001';
+    const productoId = parseInt(document.getElementById('carrito-producto-id').value);
+    const cantidad = parseInt(document.getElementById('carrito-cantidad').value) || 1;
+    const el = document.getElementById('carrito-resultado');
+
+    if (!productoId) {
+      el.innerHTML = '<p class="text-red-500 text-center py-4">Ingresa un ID de producto válido</p>';
+      return;
+    }
+    el.innerHTML = '<div class="skeleton h-20 rounded-lg"></div>';
+    try {
+      const r = await fetch(`${API}/api/carrito/agregar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sesionId, productoId, cantidad })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        el.innerHTML = `<p class="text-red-500 text-center py-4">Error: ${data.error}</p>`;
+        return;
+      }
+      el.innerHTML = `
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+          <p class="text-green-700 font-semibold text-sm">Producto agregado</p>
+          <p class="text-gray-600 text-sm mt-1">${data.producto} × ${data.cantidad}</p>
+          <p class="text-xs text-gray-400 mt-2">Sesión: ${data.sesionId}</p>
+        </div>`;
+      verCarrito();
+    } catch (e) {
+      el.innerHTML = '<p class="text-red-500 text-center py-4">No se pudo conectar con la API</p>';
+    }
+  }
+
+  async function verCarrito() {
+    const sesionId = document.getElementById('sesion-id').value.trim() || 'sesion-001';
+    const el = document.getElementById('carrito-resultado');
+    try {
+      const data = await fetchJSON(`${API}/api/carrito/total?sesionId=${encodeURIComponent(sesionId)}`);
+      if (!data.items.length) {
+        el.innerHTML = '<p class="text-gray-400 text-center py-8">El carrito está vacío</p>';
+        return;
+      }
+      el.innerHTML = `
+        <div class="space-y-2">
+          ${data.items.map(i => `
+            <div class="flex justify-between text-sm border-b border-gray-50 pb-2">
+              <span class="text-gray-700">${i.nombre} × ${i.cantidad}</span>
+              <span class="font-semibold text-gray-900">$${Number(i.subtotal).toFixed(2)}</span>
+            </div>`).join('')}
+          <div class="flex justify-between font-bold text-gray-900 pt-2">
+            <span>Total (${data.total_items} items)</span>
+            <span class="text-lg">$${Number(data.total_precio).toFixed(2)}</span>
+          </div>
+        </div>`;
+    } catch (e) {
+      el.innerHTML = '<p class="text-red-500 text-center py-4">Error al obtener el carrito</p>';
+    }
+  }
+
+  async function vaciarCarrito() {
+    const sesionId = document.getElementById('sesion-id').value.trim() || 'sesion-001';
+    const el = document.getElementById('carrito-resultado');
+    try {
+      await fetch(`${API}/api/carrito/vaciar?sesionId=${encodeURIComponent(sesionId)}`, { method: 'DELETE' });
+      el.innerHTML = '<p class="text-gray-400 text-center py-8">Carrito vaciado</p>';
+    } catch (e) {
+      el.innerHTML = '<p class="text-red-500 text-center py-4">Error al vaciar el carrito</p>';
+    }
+  }
+
+  async function loadReportes() {
+    const container = document.getElementById('reportes-container');
+    container.innerHTML = '<div class="skeleton rounded-xl h-40"></div><div class="skeleton rounded-xl h-40"></div>';
+    try {
+      const [inv, cats] = await Promise.all([
+        fetchJSON(`${API}/api/reporte/inventario`),
+        fetchJSON(`${API}/api/reporte/categorias`)
+      ]);
+      container.innerHTML = `
+        <div class="border border-gray-100 rounded-xl p-5">
+          <h3 class="font-semibold text-gray-700 mb-4 text-sm uppercase tracking-wide">Resumen de inventario</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div><p class="text-xs text-gray-400">Total productos</p><p class="text-2xl font-bold text-gray-900">${inv.total_productos}</p></div>
+            <div><p class="text-xs text-gray-400">Disponibles</p><p class="text-2xl font-bold text-green-600">${inv.disponibles}</p></div>
+            <div><p class="text-xs text-gray-400">Agotados</p><p class="text-2xl font-bold text-red-500">${inv.agotados}</p></div>
+            <div><p class="text-xs text-gray-400">Precio promedio</p><p class="text-2xl font-bold text-gray-900">$${inv.precio_promedio}</p></div>
+            <div class="col-span-2"><p class="text-xs text-gray-400">Valor total inventario</p><p class="text-2xl font-bold text-gray-900">$${inv.valor_inventario}</p></div>
+          </div>
+        </div>
+        <div class="border border-gray-100 rounded-xl p-5">
+          <h3 class="font-semibold text-gray-700 mb-4 text-sm uppercase tracking-wide">Por categoría</h3>
+          <div class="space-y-3">
+            ${Object.entries(cats.categorias).map(([nombre, datos]) => `
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2">
+                  <span>${CATEGORY_ICONS[nombre] || '🏷️'}</span>
+                  <span class="text-gray-700 font-medium">${nombre}</span>
+                </div>
+                <div class="text-right">
+                  <span class="text-gray-900 font-semibold">${datos.total} items</span>
+                  <span class="text-xs text-gray-400 ml-2">$${datos.precio_promedio} prom.</span>
+                </div>
+              </div>`).join('')}
+          </div>
+          <p class="text-xs text-gray-400 mt-4">Total: ${cats.total_categorias} categorías</p>
+        </div>`;
+    } catch (e) {
+      container.innerHTML = '<div class="col-span-2 text-center py-8 text-red-400">Error al generar el reporte</div>';
+    }
+  }
+
+  // Carga inicial y refresco automático cada 30 segundos
+  loadAll();
+  setInterval(loadAll, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# Maven
+api/target/
+*.class
+*.jar
+*.war
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes (datos persistentes locales)
+prometheus_data/
+grafana_data/
+
+# Logs
+*.log
+logs/
