@@ -10,7 +10,7 @@ Stack completo de monitoreo usando **Spring Boot**, **Prometheus** y **Grafana**
 |---|---|
 | **Nombre completo** | Adriana Lucia Carreño Medina |
 | **Correo** | alcarrenom@libertadores.edu.co |
-| **Repositorio** | https://github.com/alcarreno/Api-Automatizaci-n |
+| **Repositorio** | https://github.com/Adrilu22/Api-Automatizaci-n |
 
 ---
 
@@ -50,7 +50,7 @@ Stack completo de monitoreo usando **Spring Boot**, **Prometheus** y **Grafana**
 ### Paso 1 — Clonar el repositorio
 
 ```powershell
-git clone https://github.com/alcarreno/Api-Automatizaci-n.git
+https://github.com/Adrilu22/Api-Automatizaci-n
 cd Api-Automatizaci-n
 ```
 
@@ -95,9 +95,9 @@ Ir a http://localhost:9090/targets — el target `spring-api` debe mostrar estad
 |---|---|---|
 | Frontend (panel visual) | http://localhost | — |
 | API REST | http://localhost:8080 | — |
-| Swagger UI (documentación) | http://localhost:8080/swagger-ui.html | — |
-| Métricas Prometheus raw | http://localhost:8080/metrics | — |
+| Métricas Prometheus raw | http://localhost:8080/ | — |
 | Prometheus | http://localhost:9090 | — |
+## Usuario Ingreso grafana
 | **Grafana** | **http://localhost:3001** | **admin / admin123** |
 
 ---
