@@ -97,8 +97,7 @@ Ir a http://localhost:9090/targets — el target `spring-api` debe mostrar estad
 | API REST | http://localhost:8080 | — |
 | Métricas Prometheus raw | http://localhost:8080/ | — |
 | Prometheus | http://localhost:9090 | — |
-## Usuario Ingreso grafana
-| **Grafana** | **http://localhost:3001** | **admin / admin123** |
+| Grafana | http://localhost:3001 | admin / admin123 |
 
 ---
 
