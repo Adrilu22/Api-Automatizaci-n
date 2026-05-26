@@ -8,7 +8,7 @@ Stack completo de monitoreo usando **Spring Boot**, **Prometheus** y **Grafana**
 
 | Campo | Valor |
 |---|---|
-| **Nombre completo** | Adrian Alcarreno |
+| **Nombre completo** | Adriana Lucia Carreño Medina |
 | **Correo** | alcarrenom@libertadores.edu.co |
 | **Repositorio** | https://github.com/alcarreno/Api-Automatizaci-n |
 
