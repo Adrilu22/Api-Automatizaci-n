@@ -16,7 +16,7 @@ Stack completo de monitoreo usando **Spring Boot**, **Prometheus** y **Grafana**
 
 ## Descripción de la API
 
-**UrbanGlow** es una API REST para gestión de una tienda de moda. Permite consultar productos, buscar por categorías, gestionar un carrito de compras y obtener reportes de inventario. Está completamente instrumentada con métricas en formato Prometheus.
+**UrbanGlow** es una API REST para gestión de una tienda de moda. Permite consultar productos, buscar por categorías, gestionar un carrito de compras y obtener reportes de inventario. Está completamente instrumentada con métricas en formato Prometheus y dashboard de grafana.
 
 ---
 
