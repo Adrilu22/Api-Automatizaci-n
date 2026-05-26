@@ -15,9 +15,9 @@ Sistema completo de observabilidad implementado sobre una API REST de tienda de 
 | Campo | Detalle |
 |---|---|
 | **Nombre completo** | Adriana Lucia Carreño Medina |
-| **Correo institucional** | alcarrenom@libertadores.edu.co |
+| **Codigo** | 202310009601 |
 | **Repositorio** | https://github.com/Adrilu22/Api-Automatizaci-n |
-| **Materia** | Herramientas y Visualización de Datos |
+| **Video URL** | https://drive.google.com/file/d/1425kUUkzC0oJBld_VOZMXTKf9h7AvrUK/view?usp=sharing |
 
 ---
 
