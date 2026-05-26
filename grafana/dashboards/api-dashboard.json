@@ -165,7 +165,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "sum(rate(tienda_requests_total{status!=\"ok\"}[1m])) / sum(rate(tienda_requests_total[1m])) * 100",
+          "expr": "(sum(rate(tienda_requests_total{status!=\"ok\"}[1m])) or vector(0)) / sum(rate(tienda_requests_total[1m])) * 100",
           "legendFormat": "Tasa de errores",
           "range": true,
           "refId": "A"
