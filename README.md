@@ -6,7 +6,7 @@
 ![Grafana](https://img.shields.io/badge/Grafana-10.4-yellow)
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue)
 
-Sistema completo de observabilidad implementado sobre una API REST de tienda de moda. Incluye recolección de métricas con **Prometheus**, visualización con **Grafana** y despliegue totalmente contenerizado con **Docker Compose**.
+Sistema completo de observabilidad implementado sobre una API REST de tienda de moda. Incluye recolección de métricas con **Prometheus**, visualización con **Grafana**, despliegue contenerizado con **Docker Compose** y un dashboard interactivo con operaciones CRUD completas.
 
 ---
 
@@ -23,7 +23,9 @@ Sistema completo de observabilidad implementado sobre una API REST de tienda de 
 
 ## Descripción del proyecto
 
-**UrbanGlow** es una API REST para la gestión de una tienda de moda desarrollada con Spring Boot. El proyecto demuestra la implementación de un stack de monitoreo completo en el que la API expone métricas personalizadas en formato Prometheus (contadores, histogramas y gauges), Prometheus las recolecta cada 15 segundos y Grafana las visualiza en un dashboard con 6 paneles en tiempo real.
+**UrbanGlow** es una API REST de una tienda de moda desarrollada con Spring Boot. El proyecto demuestra la implementación de un stack de monitoreo completo en el que la API expone métricas personalizadas en formato Prometheus (contadores, histogramas y gauges), Prometheus las recolecta cada 15 segundos y Grafana las visualiza en un dashboard con 9 paneles en tiempo real.
+
+Las métricas de negocio son: ventas por mes, clientes premium y descuentos aplicados por mes. Adicionalmente, la API implementa operaciones CRUD completas (POST, PUT, DELETE) sobre ventas y clientes, accesibles desde el dashboard interactivo del frontend.
 
 ### Tecnologías utilizadas
 
@@ -116,7 +118,7 @@ Abrir http://localhost:9090/targets — el target `spring-api` debe mostrar esta
 
 | Servicio | URL | Credenciales |
 |---|---|---|
-| Frontend (panel visual) | http://localhost | — |
+| Dashboard de negocio | http://localhost | — |
 | API REST | http://localhost:8080 | — |
 | Métricas Prometheus raw | http://localhost:8080/metrics | — |
 | Prometheus | http://localhost:9090 | — |
@@ -126,58 +128,151 @@ Abrir http://localhost:9090/targets — el target `spring-api` debe mostrar esta
 
 ## Endpoints de la API
 
-La API expone **11 endpoints** organizados en 5 grupos funcionales.
+Base URL: `http://localhost:8080`
 
-### General
+### Endpoints de consulta
 
-| Método | Endpoint | Descripción |
+| Método | URL completa | Descripción |
 |---|---|---|
-| `GET` | `/` | Health check — estado del servicio y listado de endpoints disponibles |
-| `GET` | `/metrics` | Métricas en formato Prometheus (requerido por la actividad) |
+| `GET` | `http://localhost:8080/` | Health check — estado del servicio y listado de endpoints |
+| `GET` | `http://localhost:8080/api/datos` | Resumen de las 3 métricas de negocio (ventas, clientes, descuentos) |
+| `GET` | `http://localhost:8080/api/ventas` | Lista completa de todas las ventas registradas |
+| `GET` | `http://localhost:8080/api/clientes` | Lista completa de todos los clientes registrados |
+| `GET` | `http://localhost:8080/api/lento` | Simula procesamiento pesado con latencia de 2–3 segundos |
+| `GET` | `http://localhost:8080/metrics` | Expone métricas en formato Prometheus |
 
-### Productos
+### Endpoints CRUD
 
-| Método | Endpoint | Descripción |
+| Método | URL completa | Descripción |
 |---|---|---|
-| `GET` | `/api/productos` | Lista todos los productos (filtro opcional `?categoria=`) |
-| `GET` | `/api/datos` | Alias requerido equivalente a `/api/productos` |
-| `GET` | `/api/categorias` | Lista todas las categorías del catálogo |
+| `POST` | `http://localhost:8080/api/ventas` | Registra una nueva venta |
+| `PUT` | `http://localhost:8080/api/ventas/{id}` | Actualiza el total y/o descuento de una venta existente |
+| `PUT` | `http://localhost:8080/api/clientes/{id}/premium?premium=true\|false` | Activa o desactiva la membresía premium de un cliente |
+| `DELETE` | `http://localhost:8080/api/ventas/{id}` | Cancela (elimina) una venta por ID |
 
-### Búsqueda
+---
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `GET` | `/api/buscar?q={término}` | Búsqueda de productos con latencia simulada de 300–1200 ms |
-| `GET` | `/api/lento` | Simula procesamiento pesado con latencia de 2–3 segundos |
+### `POST /api/ventas` — Registrar venta
 
-### Carrito de compras
+**Request body:**
+```json
+{
+  "mes": "2026-05",
+  "clienteId": 3,
+  "total": 99.99,
+  "descuentoAplicado": false
+}
+```
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `POST` | `/api/carrito/agregar` | Agrega un producto al carrito de una sesión |
-| `GET` | `/api/carrito/total?sesionId=` | Devuelve el resumen y total del carrito |
-| `DELETE` | `/api/carrito/vaciar?sesionId=` | Vacía el carrito de una sesión |
+**Response 201:**
+```json
+{
+  "mensaje": "Venta registrada exitosamente",
+  "venta": { "id": 29, "mes": "2026-05", "clienteId": 3, "total": 99.99, "descuentoAplicado": false },
+  "timestamp": "2026-05-26T10:00:00"
+}
+```
 
-### Reportes
+---
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `GET` | `/api/reporte/inventario` | Estadísticas globales del inventario |
-| `GET` | `/api/reporte/categorias` | Productos agrupados por categoría con estadísticas |
+### `PUT /api/ventas/{id}` — Actualizar venta
+
+**Request body:**
+```json
+{
+  "total": 119.99,
+  "descuentoAplicado": true
+}
+```
+
+**Response 200:**
+```json
+{
+  "mensaje": "Venta 5 actualizada",
+  "venta": { "id": 5, "mes": "2026-02", "clienteId": 9, "total": 119.99, "descuentoAplicado": true },
+  "timestamp": "2026-05-26T10:00:00"
+}
+```
+
+**Response 404:** `{ "error": "Venta con id 99 no encontrada" }`
+
+---
+
+### `PUT /api/clientes/{id}/premium?premium=true` — Actualizar membresía
+
+**Response 200:**
+```json
+{
+  "mensaje": "Membresía premium activada",
+  "cliente": { "id": 3, "nombre": "Isabella García", "premium": true },
+  "timestamp": "2026-05-26T10:00:00"
+}
+```
+
+**Response 404:** `{ "error": "Cliente con id 99 no encontrado" }`
+
+---
+
+### `DELETE /api/ventas/{id}` — Cancelar venta
+
+**Response 200:** `{ "mensaje": "Venta 5 cancelada exitosamente" }`
+
+**Response 404:** `{ "error": "Venta con id 99 no encontrada" }`
+
+---
+
+### Respuesta de `GET /api/datos`
+
+Devuelve en un solo JSON las tres métricas de negocio:
+
+```json
+{
+  "ventas_por_mes": {
+    "2026-02": { "cantidad": 5, "ingresos": 524.96 },
+    "2026-03": { "cantidad": 8, "ingresos": 554.95 },
+    "2026-04": { "cantidad": 9, "ingresos": 799.94 },
+    "2026-05": { "cantidad": 6, "ingresos": 649.95 }
+  },
+  "clientes_premium": {
+    "total": 12,
+    "premium": 4,
+    "regulares": 8,
+    "ratio_pct": 33.33
+  },
+  "descuentos_por_mes": {
+    "2026-02": 2,
+    "2026-03": 3,
+    "2026-04": 4,
+    "2026-05": 2
+  },
+  "timestamp": "2026-05-26T10:00:00"
+}
+```
 
 ---
 
 ## Métricas implementadas
 
-### Métricas personalizadas
+### Métricas de rendimiento
 
 | Métrica | Tipo | Descripción |
 |---|---|---|
-| `tienda_requests_total` | Counter | Total de requests por endpoint y estado (ok, not_found, agotado) |
+| `tienda_requests_total` | Counter | Total de requests por endpoint y estado (ok) |
 | `tienda_request_duration_seconds` | Histogram | Distribución de latencia con percentiles p50, p95 y p99 |
 | `tienda_active_requests` | Gauge | Número de requests siendo procesados simultáneamente |
 
-Todas las métricas incluyen la etiqueta `endpoint` para filtrar por ruta específica en las queries PromQL.
+Las métricas de rendimiento incluyen la etiqueta `endpoint` para filtrar por ruta en las queries PromQL.
+
+### Métricas de negocio
+
+| Métrica | Tipo | Etiqueta | Descripción |
+|---|---|---|---|
+| `tienda_ventas_mensuales` | Gauge | `mes` | Número de ventas registradas por mes |
+| `tienda_ingresos_mensuales` | Gauge | `mes` | Ingresos totales en USD por mes |
+| `tienda_descuentos_mensuales` | Gauge | `mes` | Descuentos aplicados por mes |
+| `tienda_clientes_premium_total` | Gauge | — | Clientes con membresía premium activa |
+
+> Las métricas de negocio se actualizan automáticamente en Prometheus cada vez que se registra, edita o cancela una venta, o se cambia la membresía de un cliente.
 
 ---
 
@@ -203,13 +298,27 @@ tienda_active_requests
 
 # Total acumulado de requests por endpoint
 sum(tienda_requests_total) by (endpoint)
+
+# Ventas por mes
+tienda_ventas_mensuales
+
+# Ingresos por mes
+tienda_ingresos_mensuales
+
+# Clientes premium activos
+tienda_clientes_premium_total
+
+# Descuentos aplicados por mes
+tienda_descuentos_mensuales
 ```
 
 ---
 
 ## Dashboard de Grafana
 
-El dashboard se provisiona automáticamente al iniciar los contenedores — no requiere configuración manual. Contiene **6 paneles**:
+El dashboard se provisiona automáticamente al iniciar los contenedores — no requiere configuración manual. Contiene **9 paneles** organizados en dos filas:
+
+**Fila 1 — Rendimiento técnico**
 
 | # | Panel | Tipo | Descripción |
 |---|---|---|---|
@@ -220,11 +329,36 @@ El dashboard se provisiona automáticamente al iniciar los contenedores — no r
 | 5 | Requests activos | Stat | Gauge en tiempo real de requests en procesamiento |
 | 6 | Total por endpoint | Bar gauge | Volumen acumulado de requests por ruta |
 
+**Fila 2 — Métricas de negocio**
+
+| # | Panel | Tipo | Descripción |
+|---|---|---|---|
+| 7 | Ventas por mes | Bar gauge | Número de ventas registradas por mes (Feb–May 2026) |
+| 8 | Clientes premium | Stat | Total de clientes con membresía premium activa |
+| 9 | Descuentos por mes | Bar gauge | Descuentos aplicados en cada mes |
+
+---
+
+## Dashboard de negocio (frontend)
+
+El frontend en `http://localhost` incluye un dashboard interactivo con las siguientes funcionalidades:
+
+- **Filtro por período** — pill buttons para ver datos de Febrero, Marzo, Abril o Mayo 2026
+- **KPIs en tiempo real** — Total ventas, Clientes premium, Ventas con descuento
+- **Tabla de resumen mensual** — ventas e ingresos por mes con barra de volumen
+- **Registro individual de ventas** — tabla con todas las ventas y 3 acciones CRUD:
+  - **+ Nueva Venta** → formulario modal para registrar una venta (`POST /api/ventas`)
+  - **Editar** → modal pre-cargado para modificar total y descuento (`PUT /api/ventas/{id}`)
+  - **Cancelar** → elimina la venta con confirmación (`DELETE /api/ventas/{id}`)
+- **Gestión de membresías** — lista de los 12 clientes con botón para dar o quitar premium (`PUT /api/clientes/{id}/premium`)
+- **Descuentos por mes** — barras de progreso con conteo de ventas con descuento
+- **Panel de observabilidad** — accesos directos a Prometheus, Grafana y métricas raw
+
 ---
 
 ## Script de tráfico sintético
 
-El script genera requests automáticos con pesos por endpoint para simular un patrón de tráfico realista.
+El script genera requests automáticos a los endpoints de consulta para simular un patrón de tráfico realista y poblar las métricas en Grafana.
 
 ```powershell
 # Ejecutar desde la raíz del proyecto
@@ -235,13 +369,9 @@ Distribución de tráfico configurada:
 
 | Endpoint | Descripción | Peso |
 |---|---|---|
-| `/` | Health check | 15% |
-| `/api/datos` | Datos principales | 20% |
-| `/api/productos` | Catálogo | 20% |
-| `/api/categorias` | Categorías | 10% |
-| `/api/lento` | Endpoint lento | 5% |
-| `/api/buscar?q=vestido` | Búsqueda 1 | 15% |
-| `/api/buscar?q=negro` | Búsqueda 2 | 15% |
+| `/` | Health check | 25% |
+| `/api/datos` | Métricas de negocio | 50% |
+| `/api/lento` | Procesamiento lento | 25% |
 
 ---
 
@@ -258,37 +388,36 @@ Api-Automatizaci-n/
 │   ├── pom.xml
 │   └── src/main/java/com/tiendamoda/
 │       ├── config/
-│       │   ├── CorsConfig.java         # Configuración de CORS
-│       │   ├── MetricsConfig.java      # Registro del gauge de requests activos
-│       │   └── OpenApiConfig.java      # Metadatos de Swagger UI
+│       │   ├── CorsConfig.java         # CORS: GET, POST, PUT, DELETE, OPTIONS
+│       │   ├── MetricsConfig.java      # Gauges: requests activos + métricas de negocio
+│       │   └── OpenApiConfig.java      # Metadatos de la API
 │       ├── controller/
-│       │   ├── HealthController.java
-│       │   ├── ProductoController.java
-│       │   ├── BusquedaController.java
-│       │   ├── CarritoController.java
-│       │   ├── ReporteController.java
-│       │   └── MetricsController.java  # Reenvío de /metrics a /actuator/prometheus
+│       │   ├── HealthController.java   # GET /
+│       │   ├── DataController.java     # Todos los endpoints /api/*
+│       │   └── MetricsController.java  # GET /metrics
 │       ├── model/
-│       │   ├── Producto.java
-│       │   ├── Categoria.java
-│       │   ├── CarritoItem.java
-│       │   └── ProductoRequest.java
+│       │   ├── Venta.java              # id, mes, clienteId, total, descuentoAplicado
+│       │   ├── VentaRequest.java       # Body para POST /api/ventas
+│       │   ├── VentaUpdateRequest.java # Body para PUT /api/ventas/{id}
+│       │   ├── Cliente.java            # id, nombre, premium
+│       │   ├── DescuentoCampana.java   # id, mes, descripcion, fechaExpiracion
+│       │   └── DescuentoCampanaRequest.java
 │       └── repository/
-│           └── TiendaRepository.java   # Repositorio en memoria con 15 productos
+│           └── TiendaRepository.java   # 28 ventas y 12 clientes en memoria + CRUD
 │
-├── frontend/                           # Panel visual — Nginx + HTML/JS/Tailwind
+├── frontend/                           # Dashboard interactivo — Nginx + HTML/JS/Tailwind
 │   ├── Dockerfile
-│   └── index.html
+│   └── index.html                      # KPIs, filtro por mes, CRUD de ventas y membresías
 │
 ├── prometheus/
-│   └── prometheus.yml                  # Configuración de scraping (intervalo: 15s)
+│   └── prometheus.yml                  # Scraping cada 15s
 │
 ├── grafana/
 │   ├── provisioning/
 │   │   ├── datasources/prometheus.yml  # Datasource auto-provisionado
 │   │   └── dashboards/dashboards.yml
 │   └── dashboards/
-│       └── api-dashboard.json          # Dashboard con 6 paneles
+│       └── api-dashboard.json          # 9 paneles: 6 de rendimiento + 3 de negocio
 │
 └── scripts/
     └── generate_traffic.ps1            # Generador de tráfico sintético (PowerShell)
@@ -321,22 +450,37 @@ docker-compose up -d --build
 ## Validación antes de la demostración
 
 ```powershell
-# 1. Reinicio limpio
+# 1. Recompilar el JAR con los últimos cambios del código Java
+docker run --rm `
+  -v "C:/Users/adria/Desktop/Automatizacion/Api-Automatizaci-n/api:/app" `
+  -v "C:/Users/adria/.m2:/root/.m2" `
+  -w /app --dns 8.8.8.8 `
+  maven:3.9-eclipse-temurin-17-alpine `
+  mvn clean package -DskipTests -q
+
+# 2. Reinicio limpio y reconstrucción de imágenes
 docker-compose down -v
 docker-compose up -d --build
 
-# 2. Verificar que los 4 servicios están en estado running
+# 3. Verificar que los 4 servicios están en estado running
 docker-compose ps
 
-# 3. Esperar ~60 segundos y confirmar que la API responde
+# 4. Esperar ~60 segundos y confirmar que la API responde
 #    Abrir: http://localhost:8080
 
-# 4. Confirmar scraping activo en Prometheus
+# 5. Confirmar scraping activo en Prometheus
 #    Abrir: http://localhost:9090/targets  →  spring-api debe estar UP
 
-# 5. Generar tráfico sintético
+# 6. Generar tráfico sintético
 .\scripts\generate_traffic.ps1
 
-# 6. Abrir Grafana y verificar el dashboard
+# 7. Probar las operaciones CRUD desde el dashboard de negocio
+#    Abrir: http://localhost
+#    - Registrar una nueva venta con el botón "+ Nueva Venta"
+#    - Editar el total de una venta con el botón "Editar"
+#    - Cancelar una venta con el botón "Cancelar"
+#    - Cambiar la membresía de un cliente en "Gestión de Membresías"
+
+# 8. Verificar las métricas en Grafana
 #    Abrir: http://localhost:3001  →  usuario: admin  |  contraseña: admin123
 ```

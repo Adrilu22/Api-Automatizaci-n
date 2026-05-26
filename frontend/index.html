@@ -3,209 +3,242 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UrbanGlow — Tienda de Moda</title>
+  <title>UrbanGlow — Dashboard de Negocio</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
     body { font-family: 'Inter', sans-serif; }
     .font-serif { font-family: 'Playfair Display', serif; }
     .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
-    .badge-disponible { background: #d1fae5; color: #065f46; }
-    .badge-agotado    { background: #fee2e2; color: #991b1b; }
+    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 16px 32px rgba(0,0,0,0.10); }
     .pulse-dot::before {
-      content: '';
-      display: inline-block;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #10b981;
-      margin-right: 6px;
+      content: ''; display: inline-block;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #10b981; margin-right: 6px;
       animation: pulse 2s infinite;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
-    }
-    .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+    .skeleton { background: linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; }
+    @keyframes shimmer { 0%{background-position:-200% 0}100%{background-position:200% 0} }
+    .bar { transition: width 0.6s ease; }
+    .filter-btn { transition: all 0.15s ease; }
+    .filter-btn.active { background:#111827; color:#fff; border-color:#111827; }
+    @keyframes toastIn { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+    .toast-anim { animation: toastIn 0.25s ease; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
+  <!-- TOAST -->
+  <div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-medium toast-anim pointer-events-none"></div>
+
+  <!-- MODAL: Nueva Venta (POST) -->
+  <div id="modal-venta" class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4"
+       onclick="if(event.target===this) cerrarModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div class="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <h3 class="font-serif text-xl font-bold text-gray-900">Registrar Nueva Venta</h3>
+          <p class="text-xs text-gray-400 mt-0.5">POST /api/ventas</p>
+        </div>
+        <button onclick="cerrarModal()"
+          class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-900 text-xl leading-none transition-colors">&times;</button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Mes</label>
+          <select id="form-mes" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-900 bg-white">
+            <option value="2026-02">Febrero 2026</option>
+            <option value="2026-03">Marzo 2026</option>
+            <option value="2026-04">Abril 2026</option>
+            <option value="2026-05" selected>Mayo 2026</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Cliente</label>
+          <select id="form-cliente" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-900 bg-white">
+            <option value="">Seleccionar cliente...</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Total (USD)</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+            <input id="form-total" type="number" step="0.01" min="0.01" placeholder="0.00"
+              class="w-full border border-gray-200 rounded-lg pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:border-gray-900" />
+          </div>
+        </div>
+        <label class="flex items-center gap-3 cursor-pointer select-none">
+          <input id="form-descuento" type="checkbox" class="w-4 h-4 rounded accent-gray-900" />
+          <span class="text-sm text-gray-700">Aplicar descuento a esta venta</span>
+        </label>
+      </div>
+      <div class="px-6 pb-6 flex gap-3 justify-end border-t border-gray-100 pt-4">
+        <button onclick="cerrarModal()" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors">Cancelar</button>
+        <button onclick="registrarVenta()" class="px-6 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors font-medium">Registrar venta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Editar Venta (PUT) -->
+  <div id="modal-editar" class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4"
+       onclick="if(event.target===this) cerrarEditarModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+      <div class="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <h3 class="font-serif text-xl font-bold text-gray-900">Editar Venta</h3>
+          <p class="text-xs text-gray-400 mt-0.5">PUT /api/ventas/{id}</p>
+        </div>
+        <button onclick="cerrarEditarModal()"
+          class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-900 text-xl leading-none transition-colors">&times;</button>
+      </div>
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="edit-id" />
+        <div class="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-500" id="edit-info"></div>
+        <div>
+          <label class="block text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Nuevo Total (USD)</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+            <input id="edit-total" type="number" step="0.01" min="0.01"
+              class="w-full border border-gray-200 rounded-lg pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:border-gray-900" />
+          </div>
+        </div>
+        <label class="flex items-center gap-3 cursor-pointer select-none">
+          <input id="edit-descuento" type="checkbox" class="w-4 h-4 rounded accent-gray-900" />
+          <span class="text-sm text-gray-700">Descuento aplicado</span>
+        </label>
+      </div>
+      <div class="px-6 pb-6 flex gap-3 justify-end border-t border-gray-100 pt-4">
+        <button onclick="cerrarEditarModal()" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors">Cancelar</button>
+        <button onclick="actualizarVenta()"
+          class="px-6 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium">
+          Guardar cambios
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- HEADER -->
-  <header class="bg-white shadow-sm sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+  <header class="bg-white shadow-sm sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <span class="text-3xl">👗</span>
         <div>
           <h1 class="font-serif text-2xl font-bold text-gray-900">UrbanGlow</h1>
-          <p class="text-xs text-gray-500 tracking-widest uppercase">Tienda de Moda</p>
+          <p class="text-xs text-gray-500 tracking-widest uppercase">Dashboard de Negocio</p>
         </div>
       </div>
-      <div class="flex items-center gap-6">
-        <span id="api-status-badge" class="text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-500">
-          Conectando...
-        </span>
-        <span class="text-sm text-gray-400" id="last-update">—</span>
-        <button onclick="loadAll()" class="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
-          Actualizar
-        </button>
+      <div class="flex items-center gap-4">
+        <span id="api-status" class="text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-500">Conectando...</span>
+        <span id="last-update" class="text-xs text-gray-400">—</span>
+        <button onclick="loadAll()" class="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">Actualizar</button>
       </div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-6 py-10 space-y-10">
+  <main class="max-w-6xl mx-auto px-6 py-10 space-y-6">
 
-    <!-- STATS ROW -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="stats-row">
-      <div class="bg-white rounded-2xl p-5 shadow-sm skeleton h-24"></div>
-      <div class="bg-white rounded-2xl p-5 shadow-sm skeleton h-24"></div>
-      <div class="bg-white rounded-2xl p-5 shadow-sm skeleton h-24"></div>
-      <div class="bg-white rounded-2xl p-5 shadow-sm skeleton h-24"></div>
+    <!-- FILTRO POR MES -->
+    <div class="bg-white rounded-2xl shadow-sm px-6 py-4 flex flex-wrap items-center gap-3">
+      <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider mr-2">Período:</span>
+      <button onclick="setFilter(null)" id="btn-all" class="filter-btn active border border-gray-900 px-5 py-2 rounded-full text-sm font-medium">Todos</button>
+      <button onclick="setFilter('2026-02')" id="btn-2026-02" class="filter-btn border border-gray-200 text-gray-600 px-5 py-2 rounded-full text-sm font-medium hover:border-gray-900">Febrero 2026</button>
+      <button onclick="setFilter('2026-03')" id="btn-2026-03" class="filter-btn border border-gray-200 text-gray-600 px-5 py-2 rounded-full text-sm font-medium hover:border-gray-900">Marzo 2026</button>
+      <button onclick="setFilter('2026-04')" id="btn-2026-04" class="filter-btn border border-gray-200 text-gray-600 px-5 py-2 rounded-full text-sm font-medium hover:border-gray-900">Abril 2026</button>
+      <button onclick="setFilter('2026-05')" id="btn-2026-05" class="filter-btn border border-gray-200 text-gray-600 px-5 py-2 rounded-full text-sm font-medium hover:border-gray-900">Mayo 2026</button>
     </div>
 
-    <!-- SEARCH BAR -->
-    <div class="bg-white rounded-2xl shadow-sm p-6">
-      <h2 class="font-serif text-xl font-bold text-gray-800 mb-4">Buscar productos</h2>
-      <div class="flex gap-3">
-        <input id="search-input" type="text" placeholder="Ej: vestido, negro, sandalia..."
-          class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-          onkeydown="if(event.key==='Enter') search()" />
-        <button onclick="search()"
-          class="bg-gray-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-gray-700 transition-colors">
-          Buscar
-        </button>
-        <button onclick="clearSearch()"
-          class="border border-gray-200 text-gray-600 px-4 py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors">
-          Limpiar
-        </button>
-      </div>
-      <div id="search-time" class="mt-2 text-xs text-gray-400 hidden"></div>
+    <!-- KPI CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="kpi-row">
+      <div class="bg-white rounded-2xl p-5 shadow-sm skeleton h-28"></div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm skeleton h-28"></div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm skeleton h-28"></div>
     </div>
 
-    <!-- CATEGORIES FILTER -->
-    <div>
-      <h2 class="font-serif text-2xl font-bold text-gray-800 mb-4">Categorías</h2>
-      <div id="categorias-container" class="flex flex-wrap gap-3">
-        <div class="skeleton h-10 w-28 rounded-full"></div>
-        <div class="skeleton h-10 w-28 rounded-full"></div>
-        <div class="skeleton h-10 w-28 rounded-full"></div>
-      </div>
-    </div>
-
-    <!-- PRODUCTS GRID -->
-    <div>
+    <!-- ═══ VENTAS POR MES ═══ -->
+    <div class="bg-white rounded-2xl shadow-sm p-6 card-hover">
       <div class="flex items-center justify-between mb-6">
-        <h2 class="font-serif text-2xl font-bold text-gray-800">
-          Catálogo <span id="productos-count" class="text-gray-400 text-lg font-normal"></span>
-        </h2>
-        <span id="active-filter" class="text-sm text-gray-500 hidden">
-          Filtrando por: <strong id="filter-label"></strong>
-        </span>
+        <div>
+          <h2 class="font-serif text-2xl font-bold text-gray-900">Ventas por Mes</h2>
+          <p class="text-sm text-gray-500 mt-1" id="ventas-subtitle">Cantidad de ventas e ingresos — Feb a May 2026</p>
+        </div>
+        <span class="text-3xl">📈</span>
       </div>
-      <div id="productos-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        <!-- skeletons -->
-        <div class="skeleton rounded-2xl h-64"></div>
-        <div class="skeleton rounded-2xl h-64"></div>
-        <div class="skeleton rounded-2xl h-64"></div>
-        <div class="skeleton rounded-2xl h-64"></div>
-      </div>
-    </div>
 
-    <!-- CARRITO -->
-    <div class="bg-white rounded-2xl shadow-sm p-6">
-      <h2 class="font-serif text-2xl font-bold text-gray-800 mb-6">Carrito de compras</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Agregar al carrito -->
-        <div class="border border-gray-100 rounded-xl p-5">
-          <h3 class="font-semibold text-gray-700 mb-4 text-sm uppercase tracking-wide">Agregar producto</h3>
-          <div class="space-y-3">
-            <div>
-              <label class="text-xs text-gray-500 mb-1 block">ID de sesión</label>
-              <input id="sesion-id" type="text" value="sesion-001"
-                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
-            </div>
-            <div class="flex gap-3">
-              <div class="flex-1">
-                <label class="text-xs text-gray-500 mb-1 block">ID Producto</label>
-                <input id="carrito-producto-id" type="number" min="1" placeholder="Ej: 1"
-                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
-              </div>
-              <div class="w-24">
-                <label class="text-xs text-gray-500 mb-1 block">Cantidad</label>
-                <input id="carrito-cantidad" type="number" min="1" value="1"
-                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
-              </div>
-            </div>
-            <div class="flex gap-2 pt-1">
-              <button onclick="agregarAlCarrito()"
-                class="flex-1 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
-                Agregar al carrito
-              </button>
-              <button onclick="verCarrito()"
-                class="flex-1 border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition-colors">
-                Ver total
-              </button>
-              <button onclick="vaciarCarrito()"
-                class="border border-red-200 text-red-500 px-4 py-2 rounded-lg text-sm hover:bg-red-50 transition-colors">
-                Vaciar
-              </button>
-            </div>
+      <!-- resumen mensual -->
+      <div id="ventas-container"><div class="skeleton h-40 rounded-xl"></div></div>
+
+      <!-- tabla individual + POST / DELETE -->
+      <div class="mt-8 pt-6 border-t border-gray-100">
+        <div class="flex items-center justify-between mb-1">
+          <div>
+            <h3 class="font-semibold text-gray-800">Registro individual de ventas</h3>
+            <p class="text-xs text-gray-400 mt-0.5" id="ventas-ind-subtitle">—</p>
           </div>
+          <!-- POST /api/ventas -->
+          <button onclick="abrirModal()"
+            class="flex items-center gap-2 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Nueva Venta
+          </button>
         </div>
-        <!-- Resumen del carrito -->
-        <div class="border border-gray-100 rounded-xl p-5">
-          <h3 class="font-semibold text-gray-700 mb-4 text-sm uppercase tracking-wide">Resumen del carrito</h3>
-          <div id="carrito-resultado" class="text-sm text-gray-400 text-center py-8">
-            Agrega productos para ver el resumen
+        <p class="text-xs text-gray-400 mb-4">POST /api/ventas · PUT /api/ventas/{id} · DELETE /api/ventas/{id}</p>
+        <div id="ventas-ind-container"><div class="skeleton h-32 rounded-xl"></div></div>
+      </div>
+    </div>
+
+    <!-- ═══ CLIENTES + DESCUENTOS ═══ -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- CLIENTES PREMIUM + PUT -->
+      <div class="bg-white rounded-2xl shadow-sm p-6 card-hover">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="font-serif text-xl font-bold text-gray-900">Clientes Premium</h2>
+            <p class="text-sm text-gray-500 mt-1">Membresías activas vs regulares</p>
           </div>
+          <span class="text-3xl">⭐</span>
+        </div>
+
+        <!-- barras resumen -->
+        <div id="clientes-container"><div class="skeleton h-24 rounded-xl"></div></div>
+
+        <!-- PUT /api/clientes/{id}/premium -->
+        <div class="mt-6 pt-5 border-t border-gray-100">
+          <h3 class="font-semibold text-gray-800 mb-0.5">Actualizar membresía</h3>
+          <p class="text-xs text-gray-400 mb-3">PUT /api/clientes/{"{id}"}/premium</p>
+          <div id="clientes-list-container"><div class="skeleton h-48 rounded-xl"></div></div>
         </div>
       </div>
-    </div>
 
-    <!-- REPORTES -->
-    <div class="bg-white rounded-2xl shadow-sm p-6">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="font-serif text-2xl font-bold text-gray-800">Reportes de inventario</h2>
-        <button onclick="loadReportes()"
-          class="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
-          Generar reporte
-        </button>
-      </div>
-      <div id="reportes-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="border border-gray-100 rounded-xl p-5 text-sm text-gray-400 text-center py-12">
-          Haz clic en "Generar reporte" para ver las estadísticas
+      <!-- DESCUENTOS POR MES -->
+      <div class="bg-white rounded-2xl shadow-sm p-6 card-hover">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="font-serif text-xl font-bold text-gray-900">Descuentos por Mes</h2>
+            <p class="text-sm text-gray-500 mt-1" id="descuentos-subtitle">Ventas con descuento aplicado</p>
+          </div>
+          <span class="text-3xl">🏷️</span>
         </div>
+        <div id="descuentos-container"><div class="skeleton h-32 rounded-xl"></div></div>
       </div>
+
     </div>
 
-    <!-- LINKS PANEL -->
+    <!-- PANEL OBSERVABILIDAD -->
     <div class="bg-gray-900 text-white rounded-2xl p-8">
       <h2 class="font-serif text-xl font-bold mb-6">Panel de Observabilidad</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <a href="http://localhost:9090" target="_blank"
-          class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-colors">
-          <span class="text-2xl">📊</span>
-          <div>
-            <p class="font-semibold">Prometheus</p>
-            <p class="text-xs text-gray-400">localhost:9090</p>
-          </div>
+        <a href="http://localhost:9090" target="_blank" class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-colors">
+          <span class="text-2xl">📊</span><div><p class="font-semibold">Prometheus</p><p class="text-xs text-gray-400">localhost:9090</p></div>
         </a>
-        <a href="http://localhost:3001" target="_blank"
-          class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-colors">
-          <span class="text-2xl">📈</span>
-          <div>
-            <p class="font-semibold">Grafana</p>
-            <p class="text-xs text-gray-400">localhost:3001 · admin/admin123</p>
-          </div>
+        <a href="http://localhost:3001" target="_blank" class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-colors">
+          <span class="text-2xl">📈</span><div><p class="font-semibold">Grafana</p><p class="text-xs text-gray-400">localhost:3001 · admin / admin123</p></div>
         </a>
-        <a href="http://localhost:8080/metrics" target="_blank"
-          class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-colors">
-          <span class="text-2xl">🔬</span>
-          <div>
-            <p class="font-semibold">Métricas raw</p>
-            <p class="text-xs text-gray-400">/metrics</p>
-          </div>
+        <a href="http://localhost:8080/metrics" target="_blank" class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-colors">
+          <span class="text-2xl">🔬</span><div><p class="font-semibold">Métricas raw</p><p class="text-xs text-gray-400">localhost:8080/metrics</p></div>
         </a>
       </div>
     </div>
@@ -218,12 +251,29 @@
 
 <script>
   const API = 'http://localhost:8080';
-  let activeCategory = null;
 
-  const CATEGORY_ICONS = {
-    'Vestidos':   '👗', 'Calzado':    '👠', 'Accesorios': '👜',
-    'Camisas':    '👔', 'Pantalones': '👖', 'Blazers':    '🧥'
-  };
+  const MES_LABELS = { '2026-02':'Febrero','2026-03':'Marzo','2026-04':'Abril','2026-05':'Mayo' };
+
+  // Clientes hardcodeados como fallback si el API no los devuelve aún
+  const CLIENTES_FALLBACK = [
+    {id:1,nombre:'Sofía Martínez',premium:true},
+    {id:2,nombre:'Valentina López',premium:true},
+    {id:3,nombre:'Isabella García',premium:false},
+    {id:4,nombre:'Camila Rodríguez',premium:false},
+    {id:5,nombre:'Mariana Herrera',premium:true},
+    {id:6,nombre:'Daniela Torres',premium:false},
+    {id:7,nombre:'Alejandra Pérez',premium:true},
+    {id:8,nombre:'Natalia Flores',premium:false},
+    {id:9,nombre:'Gabriela Sánchez',premium:false},
+    {id:10,nombre:'Luciana Ramírez',premium:false},
+    {id:11,nombre:'Fernanda Vargas',premium:false},
+    {id:12,nombre:'Adriana Castro',premium:false}
+  ];
+
+  let activeMonth  = null;
+  let cachedData   = null;
+  let ventasData   = [];
+  let clientesData = [...CLIENTES_FALLBACK];
 
   async function fetchJSON(url) {
     const r = await fetch(url);
@@ -231,288 +281,402 @@
     return r.json();
   }
 
+  // ── Toast ──────────────────────────────────────────────────────────────────
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-medium toast-anim pointer-events-none ${
+      type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-500 text-white'
+    }`;
+    t.classList.remove('hidden');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => {
+      t.style.transition = 'opacity .4s'; t.style.opacity = '0';
+      setTimeout(() => { t.classList.add('hidden'); t.style.opacity=''; t.style.transition=''; }, 400);
+    }, 2600);
+  }
+
+  // ── Modal Nueva Venta ─────────────────────────────────────────────────────
+
+  function abrirModal() {
+    const sel = document.getElementById('form-cliente');
+    sel.innerHTML = '<option value="">Seleccionar cliente...</option>' +
+      clientesData.map(c => `<option value="${c.id}">${c.id}. ${c.nombre}${c.premium?' ⭐':''}</option>`).join('');
+    document.getElementById('form-total').value = '';
+    document.getElementById('form-descuento').checked = false;
+    document.getElementById('modal-venta').classList.remove('hidden');
+  }
+
+  function cerrarModal() {
+    document.getElementById('modal-venta').classList.add('hidden');
+  }
+
+  // ── Modal Editar Venta ────────────────────────────────────────────────────
+
+  function abrirEditarModal(id, total, descuento, mes, cliente) {
+    document.getElementById('edit-id').value = id;
+    document.getElementById('edit-total').value = total;
+    document.getElementById('edit-descuento').checked = descuento;
+    document.getElementById('edit-info').textContent =
+      `Venta #${id} · ${mes} · ${cliente}`;
+    document.getElementById('modal-editar').classList.remove('hidden');
+  }
+
+  function cerrarEditarModal() {
+    document.getElementById('modal-editar').classList.add('hidden');
+  }
+
+  // ── PUT /api/ventas/{id} ──────────────────────────────────────────────────
+
+  async function actualizarVenta() {
+    const id      = parseInt(document.getElementById('edit-id').value);
+    const total   = parseFloat(document.getElementById('edit-total').value);
+    const desc    = document.getElementById('edit-descuento').checked;
+
+    if (isNaN(total) || total <= 0) {
+      showToast('El total debe ser mayor a 0', 'error'); return;
+    }
+    try {
+      const r = await fetch(`${API}/api/ventas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ total, descuentoAplicado: desc })
+      });
+      if (!r.ok) throw new Error();
+      cerrarEditarModal();
+      await recargar();
+      showToast(`Venta #${id} actualizada`);
+    } catch { showToast('Error al actualizar la venta', 'error'); }
+  }
+
+  // ── POST /api/ventas ───────────────────────────────────────────────────────
+
+  async function registrarVenta() {
+    const mes       = document.getElementById('form-mes').value;
+    const clienteId = parseInt(document.getElementById('form-cliente').value);
+    const total     = parseFloat(document.getElementById('form-total').value);
+    const descuento = document.getElementById('form-descuento').checked;
+
+    if (!mes || isNaN(clienteId) || clienteId < 1 || isNaN(total) || total <= 0) {
+      showToast('Completa todos los campos correctamente', 'error'); return;
+    }
+    try {
+      const r = await fetch(`${API}/api/ventas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mes, clienteId, total, descuentoAplicado: descuento })
+      });
+      if (!r.ok) throw new Error();
+      cerrarModal();
+      await recargar();
+      showToast('Venta registrada exitosamente');
+    } catch { showToast('Error al registrar la venta', 'error'); }
+  }
+
+  // ── DELETE /api/ventas/{id} ────────────────────────────────────────────────
+
+  async function cancelarVenta(id) {
+    if (!confirm(`¿Cancelar la venta #${id}?\nEsta acción no se puede deshacer.`)) return;
+    try {
+      const r = await fetch(`${API}/api/ventas/${id}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error();
+      await recargar();
+      showToast(`Venta #${id} cancelada`);
+    } catch { showToast('Error al cancelar la venta', 'error'); }
+  }
+
+  // ── PUT /api/clientes/{id}/premium ────────────────────────────────────────
+
+  async function cambiarMembresia(id, esPremium) {
+    const nuevo = !esPremium;
+    try {
+      const r = await fetch(`${API}/api/clientes/${id}/premium?premium=${nuevo}`, { method: 'PUT' });
+      if (!r.ok) throw new Error();
+      await recargar();
+      showToast(nuevo ? '⭐ Membresía premium activada' : 'Membresía cambiada a regular');
+    } catch { showToast('Error al actualizar membresía', 'error'); }
+  }
+
+  // ── Filtro ────────────────────────────────────────────────────────────────
+
+  function setFilter(mes) {
+    activeMonth = mes;
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.classList.remove('active'); b.classList.add('border-gray-200','text-gray-600'); b.classList.remove('border-gray-900');
+    });
+    const t = mes ? document.getElementById(`btn-${mes}`) : document.getElementById('btn-all');
+    if (t) { t.classList.add('active'); t.classList.remove('border-gray-200','text-gray-600'); }
+    if (cachedData) renderAll(cachedData);
+    renderVentasInd(ventasData);
+  }
+
+  // ── Carga ─────────────────────────────────────────────────────────────────
+
   async function loadHealth() {
     try {
-      const data = await fetchJSON(`${API}/`);
-      const badge = document.getElementById('api-status-badge');
-      badge.className = 'text-sm font-medium px-3 py-1 rounded-full bg-green-100 text-green-700 pulse-dot';
-      badge.textContent = 'API activa';
+      await fetchJSON(`${API}/`);
+      const el = document.getElementById('api-status');
+      el.className = 'text-sm font-medium px-3 py-1 rounded-full bg-green-100 text-green-700 pulse-dot';
+      el.textContent = 'API activa';
     } catch {
-      const badge = document.getElementById('api-status-badge');
-      badge.className = 'text-sm font-medium px-3 py-1 rounded-full bg-red-100 text-red-600';
-      badge.textContent = 'API no disponible';
+      const el = document.getElementById('api-status');
+      el.className = 'text-sm font-medium px-3 py-1 rounded-full bg-red-100 text-red-600';
+      el.textContent = 'API no disponible';
     }
   }
 
-  async function loadStats(productos) {
-    const total = productos.length;
-    const disponibles = productos.filter(p => p.disponible).length;
-    const precios = productos.map(p => p.precio);
-    const promedio = (precios.reduce((a, b) => a + b, 0) / precios.length).toFixed(2);
-    const cats = [...new Set(productos.map(p => p.categoria))].length;
-
-    document.getElementById('stats-row').innerHTML = `
-      <div class="bg-white rounded-2xl p-5 shadow-sm">
-        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Productos</p>
-        <p class="text-3xl font-bold text-gray-900">${total}</p>
-        <p class="text-xs text-gray-400 mt-1">${disponibles} disponibles</p>
-      </div>
-      <div class="bg-white rounded-2xl p-5 shadow-sm">
-        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Categorías</p>
-        <p class="text-3xl font-bold text-gray-900">${cats}</p>
-        <p class="text-xs text-gray-400 mt-1">colecciones activas</p>
-      </div>
-      <div class="bg-white rounded-2xl p-5 shadow-sm">
-        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Precio promedio</p>
-        <p class="text-3xl font-bold text-gray-900">$${promedio}</p>
-        <p class="text-xs text-gray-400 mt-1">USD</p>
-      </div>
-      <div class="bg-white rounded-2xl p-5 shadow-sm">
-        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Agotados</p>
-        <p class="text-3xl font-bold text-red-500">${total - disponibles}</p>
-        <p class="text-xs text-gray-400 mt-1">sin stock</p>
-      </div>`;
-  }
-
-  async function loadCategorias() {
+  async function loadDatos() {
     try {
-      const data = await fetchJSON(`${API}/api/categorias`);
-      const container = document.getElementById('categorias-container');
-      container.innerHTML = `
-        <button onclick="filterCategory(null)"
-          class="category-btn px-4 py-2 rounded-full border text-sm font-medium transition-colors ${!activeCategory ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:border-gray-900'}">
-          Todos
-        </button>
-        ${data.categorias.map(c => `
-          <button onclick="filterCategory('${c.nombre}')"
-            class="category-btn px-4 py-2 rounded-full border text-sm font-medium transition-colors ${activeCategory === c.nombre ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:border-gray-900'}">
-            ${CATEGORY_ICONS[c.nombre] || '🏷️'} ${c.nombre}
-            <span class="ml-1 text-xs opacity-60">(${c.totalProductos})</span>
-          </button>`).join('')}`;
-    } catch (e) {
-      console.error('Error cargando categorías:', e);
+      cachedData = await fetchJSON(`${API}/api/datos`);
+      renderAll(cachedData);
+    } catch {
+      const err = `<div class="text-center py-8 text-red-400"><p class="text-3xl mb-2">⚠️</p><p class="text-sm">No se pudo conectar con la API</p><p class="text-xs text-gray-400 mt-1">Verifica que docker-compose está corriendo</p></div>`;
+      ['kpi-row','ventas-container','clientes-container','descuentos-container'].forEach(id => { document.getElementById(id).innerHTML = err; });
     }
   }
 
-  async function loadProductos(categoria) {
-    const url = categoria ? `${API}/api/productos?categoria=${encodeURIComponent(categoria)}` : `${API}/api/productos`;
-    const grid = document.getElementById('productos-grid');
-    grid.innerHTML = '<div class="skeleton rounded-2xl h-64"></div>'.repeat(8);
-
+  async function loadVentas() {
     try {
-      const data = await fetchJSON(url);
-      renderProductos(data.productos);
-      document.getElementById('productos-count').textContent = `(${data.total})`;
-
-      const filterEl = document.getElementById('active-filter');
-      const labelEl = document.getElementById('filter-label');
-      if (categoria) {
-        filterEl.classList.remove('hidden');
-        labelEl.textContent = `${CATEGORY_ICONS[categoria] || ''} ${categoria}`;
-      } else {
-        filterEl.classList.add('hidden');
-      }
-    } catch (e) {
-      grid.innerHTML = `<div class="col-span-4 text-center py-16 text-gray-400">
-        <p class="text-4xl mb-3">⚠️</p>
-        <p>No se pudo conectar con la API</p>
-        <p class="text-xs mt-1">Verifica que docker-compose está corriendo</p>
-      </div>`;
+      const res = await fetchJSON(`${API}/api/ventas`);
+      ventasData = res.ventas;
+      renderVentasInd(ventasData);
+    } catch {
+      document.getElementById('ventas-ind-container').innerHTML =
+        `<p class="text-xs text-amber-600 bg-amber-50 rounded-lg px-4 py-3">Requiere recompilar el JAR con los nuevos endpoints.</p>`;
     }
   }
 
-  function renderProductos(productos) {
-    const grid = document.getElementById('productos-grid');
-    if (!productos.length) {
-      grid.innerHTML = `<div class="col-span-4 text-center py-16 text-gray-400">
-        <p class="text-4xl mb-3">🔍</p><p>Sin resultados</p></div>`;
+  async function loadClientes() {
+    try {
+      const res = await fetchJSON(`${API}/api/clientes`);
+      clientesData = res.clientes;
+      renderClientesList(clientesData);
+    } catch {
+      // usar fallback hardcodeado
+      renderClientesList(clientesData);
+    }
+  }
+
+  async function recargar() {
+    await Promise.all([loadDatos(), loadVentas(), loadClientes()]);
+  }
+
+  // ── Render: ventas individuales ───────────────────────────────────────────
+
+  function renderVentasInd(ventas) {
+    const filtradas = activeMonth ? ventas.filter(v => v.mes === activeMonth) : ventas;
+    const label = activeMonth ? MES_LABELS[activeMonth] : 'todos los meses';
+    document.getElementById('ventas-ind-subtitle').textContent =
+      `${filtradas.length} venta${filtradas.length !== 1 ? 's' : ''} — ${label}`;
+
+    if (!filtradas.length) {
+      document.getElementById('ventas-ind-container').innerHTML =
+        `<p class="text-sm text-gray-400 text-center py-6">No hay ventas para el período seleccionado</p>`;
       return;
     }
-    grid.innerHTML = productos.map(p => `
-      <div class="bg-white rounded-2xl shadow-sm card-hover overflow-hidden">
-        <div class="h-48 flex items-center justify-center text-6xl" style="background: linear-gradient(135deg, #f9f0ff, #fce4ec)">
-          ${CATEGORY_ICONS[p.categoria] || '🛍️'}
-        </div>
-        <div class="p-4">
-          <span class="text-xs px-2 py-0.5 rounded-full ${p.disponible ? 'badge-disponible' : 'badge-agotado'} font-medium">
-            ${p.disponible ? '● Disponible' : '● Agotado'}
-          </span>
-          <h3 class="font-semibold text-gray-900 mt-2 text-sm leading-tight">${p.nombre}</h3>
-          <p class="text-xs text-gray-500 mt-1">${p.categoria} · ${p.color}</p>
-          <p class="text-xs text-gray-400 mt-1">Tallas: ${p.tallas}</p>
-          <div class="flex items-center justify-between mt-3">
-            <span class="text-lg font-bold text-gray-900">$${p.precio.toFixed(2)}</span>
-            <span class="text-xs text-gray-400">Stock: ${p.stock}</span>
+
+    const clienteMap = {};
+    clientesData.forEach(c => { clienteMap[c.id] = c.nombre; });
+
+    document.getElementById('ventas-ind-container').innerHTML = `
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100">
+              <th class="pb-3 font-medium">#</th>
+              <th class="pb-3 font-medium">Mes</th>
+              <th class="pb-3 font-medium">Cliente</th>
+              <th class="pb-3 font-medium text-right">Total</th>
+              <th class="pb-3 font-medium text-center">Desc.</th>
+              <th class="pb-3 font-medium text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtradas.map(v => `
+              <tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                <td class="py-3 text-gray-400 text-xs font-mono">#${v.id}</td>
+                <td class="py-3 text-gray-700">${MES_LABELS[v.mes]||v.mes}</td>
+                <td class="py-3 font-medium text-gray-800">${clienteMap[v.clienteId]||'Cliente '+v.clienteId}</td>
+                <td class="py-3 text-right font-bold text-gray-900">$${Number(v.total).toFixed(2)}</td>
+                <td class="py-3 text-center">
+                  ${v.descuentoAplicado
+                    ? '<span class="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-xs font-medium">Sí</span>'
+                    : '<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded-full text-xs">No</span>'}
+                </td>
+                <td class="py-3 text-right">
+                  <div class="flex gap-1.5 justify-end">
+                    <button onclick="abrirEditarModal(${v.id}, ${v.total}, ${v.descuentoAplicado}, '${MES_LABELS[v.mes]||v.mes}', '${clienteMap[v.clienteId]||'Cliente '+v.clienteId}')"
+                      class="text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors font-medium border border-transparent hover:border-blue-200">
+                      Editar
+                    </button>
+                    <button onclick="cancelarVenta(${v.id})"
+                      class="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors font-medium border border-transparent hover:border-red-200">
+                      Cancelar
+                    </button>
+                  </div>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  // ── Render: lista de clientes ─────────────────────────────────────────────
+
+  function renderClientesList(clientes) {
+    document.getElementById('clientes-list-container').innerHTML = `
+      <div class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+        ${clientes.map(c => `
+          <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
+            <div class="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0">${c.id}</div>
+            <span class="flex-1 text-sm font-medium text-gray-800 truncate">${c.nombre}</span>
+            <span class="text-xs flex-shrink-0 ${c.premium ? 'text-purple-600 font-semibold' : 'text-gray-400'}">
+              ${c.premium ? '⭐ Premium' : 'Regular'}
+            </span>
+            <button onclick="cambiarMembresia(${c.id}, ${c.premium})"
+              class="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg font-semibold border transition-colors ${
+                c.premium
+                  ? 'border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-500 hover:bg-red-50'
+                  : 'border-purple-200 text-purple-600 hover:bg-purple-50 hover:border-purple-400'
+              }">
+              ${c.premium ? 'Quitar' : 'Dar Premium'}
+            </button>
+          </div>`).join('')}
+      </div>
+      <p class="text-xs text-gray-400 mt-3 pt-2 border-t border-gray-100">
+        Clic en el botón para cambiar el estado de membresía de cada cliente
+      </p>`;
+  }
+
+  // ── Render: resumen general ───────────────────────────────────────────────
+
+  function renderAll(d) {
+    const meses = activeMonth ? [activeMonth] : Object.keys(d.ventas_por_mes);
+    const vf = Object.fromEntries(meses.map(m => [m, d.ventas_por_mes[m]]));
+    const df = Object.fromEntries(meses.map(m => [m, d.descuentos_por_mes[m]]));
+    const label = activeMonth ? MES_LABELS[activeMonth] : 'Feb – May 2026';
+
+    renderKPIs(vf, df, d.clientes_premium);
+    renderVentasSummary(vf, label);
+    renderClientesSummary(d.clientes_premium);
+    renderDescuentos(df, label);
+  }
+
+  function renderKPIs(ventas, descuentos, clientes) {
+    const tv = Object.values(ventas).reduce((s,m) => s+m.cantidad, 0);
+    const td = Object.values(descuentos).reduce((s,v) => s+v, 0);
+    const label = activeMonth ? MES_LABELS[activeMonth] : 'Feb – May 2026';
+    document.getElementById('kpi-row').innerHTML = `
+      <div class="bg-white rounded-2xl p-5 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Ventas</p>
+        <p class="text-4xl font-bold text-gray-900">${tv}</p>
+        <p class="text-xs text-gray-400 mt-2">${label}</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Clientes Premium</p>
+        <p class="text-4xl font-bold text-purple-600">${clientes.premium}</p>
+        <p class="text-xs text-gray-400 mt-2">de ${clientes.total} clientes totales</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Ventas con Descuento</p>
+        <p class="text-4xl font-bold text-emerald-600">${td}</p>
+        <p class="text-xs text-gray-400 mt-2">${label}</p>
+      </div>`;
+  }
+
+  function renderVentasSummary(ventas, label) {
+    const meses = Object.keys(ventas);
+    const max   = Math.max(...meses.map(m => ventas[m].cantidad), 1);
+    document.getElementById('ventas-subtitle').textContent = `Cantidad de ventas e ingresos — ${label}`;
+    document.getElementById('ventas-container').innerHTML = `
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100">
+              <th class="pb-3 font-medium">Mes</th>
+              <th class="pb-3 font-medium text-right">Ventas</th>
+              <th class="pb-3 font-medium text-right">Ingresos</th>
+              <th class="pb-3 font-medium pl-6">Volumen</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${meses.map(mes => {
+              const {cantidad, ingresos} = ventas[mes];
+              const pct = Math.round((cantidad/max)*100);
+              return `<tr class="border-b border-gray-50 hover:bg-gray-50">
+                <td class="py-4 font-medium text-gray-800">${MES_LABELS[mes]||mes}</td>
+                <td class="py-4 text-right font-bold text-gray-900">${cantidad}</td>
+                <td class="py-4 text-right text-gray-700">$${Number(ingresos).toFixed(2)}</td>
+                <td class="py-4 pl-6 w-48">
+                  <div class="bg-gray-100 rounded-full h-2">
+                    <div class="bar bg-gray-900 h-2 rounded-full" style="width:${pct}%"></div>
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  function renderClientesSummary(c) {
+    const pP = c.ratio_pct;
+    const pR = (100-pP).toFixed(2);
+    document.getElementById('clientes-container').innerHTML = `
+      <div class="space-y-3">
+        <div>
+          <div class="flex justify-between text-sm mb-1">
+            <span class="text-gray-600">Premium</span>
+            <span class="font-bold text-purple-600">${c.premium} (${pP}%)</span>
           </div>
+          <div class="bg-gray-100 rounded-full h-3"><div class="bar bg-purple-500 h-3 rounded-full" style="width:${pP}%"></div></div>
         </div>
-      </div>`).join('');
+        <div>
+          <div class="flex justify-between text-sm mb-1">
+            <span class="text-gray-600">Regulares</span>
+            <span class="font-bold text-gray-700">${c.regulares} (${pR}%)</span>
+          </div>
+          <div class="bg-gray-100 rounded-full h-3"><div class="bar bg-gray-400 h-3 rounded-full" style="width:${pR}%"></div></div>
+        </div>
+        <p class="text-xs text-gray-400 pt-1">Total: ${c.total} clientes registrados</p>
+      </div>`;
   }
 
-  async function search() {
-    const q = document.getElementById('search-input').value.trim();
-    if (!q) { loadProductos(null); return; }
-
-    const grid = document.getElementById('productos-grid');
-    const timeEl = document.getElementById('search-time');
-    grid.innerHTML = '<div class="skeleton rounded-2xl h-64"></div>'.repeat(4);
-    timeEl.classList.add('hidden');
-    activeCategory = null;
-
-    const t0 = Date.now();
-    try {
-      const data = await fetchJSON(`${API}/api/buscar?q=${encodeURIComponent(q)}`);
-      const elapsed = Date.now() - t0;
-      renderProductos(data.resultados);
-      document.getElementById('productos-count').textContent = `(${data.total_resultados} resultados)`;
-      timeEl.textContent = `Búsqueda completada en ${elapsed}ms (tiempo BD: ${data.tiempo_busqueda_ms}ms)`;
-      timeEl.classList.remove('hidden');
-      document.getElementById('active-filter').classList.add('hidden');
-    } catch (e) {
-      grid.innerHTML = `<div class="col-span-4 text-center py-16 text-gray-400">
-        <p class="text-4xl mb-3">⚠️</p><p>Error en la búsqueda</p></div>`;
-    }
-    loadCategorias();
+  function renderDescuentos(descuentos, label) {
+    const meses = Object.keys(descuentos);
+    const max   = Math.max(...meses.map(m => descuentos[m]), 1);
+    const total = meses.reduce((s,m) => s+descuentos[m], 0);
+    document.getElementById('descuentos-subtitle').textContent = `Ventas con descuento aplicado — ${label}`;
+    document.getElementById('descuentos-container').innerHTML = `
+      <div class="space-y-3">
+        ${meses.map(mes => {
+          const cantidad = descuentos[mes];
+          const pct = Math.round((cantidad/max)*100);
+          return `<div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-gray-600">${MES_LABELS[mes]||mes}</span>
+              <span class="font-bold text-emerald-600">${cantidad} descuentos</span>
+            </div>
+            <div class="bg-gray-100 rounded-full h-2">
+              <div class="bar bg-emerald-500 h-2 rounded-full" style="width:${pct}%"></div>
+            </div>
+          </div>`;
+        }).join('')}
+        <p class="text-xs text-gray-400 pt-2 border-t border-gray-50">Total: ${total} descuentos aplicados</p>
+      </div>`;
   }
 
-  function clearSearch() {
-    document.getElementById('search-input').value = '';
-    document.getElementById('search-time').classList.add('hidden');
-    activeCategory = null;
-    loadAll();
-  }
-
-  function filterCategory(cat) {
-    activeCategory = cat;
-    loadCategorias();
-    loadProductos(cat);
-  }
+  // ── Carga inicial ─────────────────────────────────────────────────────────
 
   async function loadAll() {
     document.getElementById('last-update').textContent = 'Actualizando...';
-    await Promise.all([loadHealth(), loadCategorias()]);
-    const data = await fetchJSON(`${API}/api/productos`).catch(() => ({ productos: [] }));
-    if (data.productos.length) loadStats(data.productos);
-    loadProductos(activeCategory);
+    await Promise.all([loadHealth(), loadDatos(), loadVentas(), loadClientes()]);
     const now = new Date();
-    document.getElementById('last-update').textContent =
-      `Actualizado: ${now.toLocaleTimeString('es-CO')}`;
-    document.getElementById('footer-ts').textContent =
-      now.toLocaleString('es-CO');
+    document.getElementById('last-update').textContent = `Actualizado: ${now.toLocaleTimeString('es-CO')}`;
+    document.getElementById('footer-ts').textContent = now.toLocaleString('es-CO');
   }
 
-  async function agregarAlCarrito() {
-    const sesionId = document.getElementById('sesion-id').value.trim() || 'sesion-001';
-    const productoId = parseInt(document.getElementById('carrito-producto-id').value);
-    const cantidad = parseInt(document.getElementById('carrito-cantidad').value) || 1;
-    const el = document.getElementById('carrito-resultado');
-
-    if (!productoId) {
-      el.innerHTML = '<p class="text-red-500 text-center py-4">Ingresa un ID de producto válido</p>';
-      return;
-    }
-    el.innerHTML = '<div class="skeleton h-20 rounded-lg"></div>';
-    try {
-      const r = await fetch(`${API}/api/carrito/agregar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sesionId, productoId, cantidad })
-      });
-      const data = await r.json();
-      if (!r.ok) {
-        el.innerHTML = `<p class="text-red-500 text-center py-4">Error: ${data.error}</p>`;
-        return;
-      }
-      el.innerHTML = `
-        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p class="text-green-700 font-semibold text-sm">Producto agregado</p>
-          <p class="text-gray-600 text-sm mt-1">${data.producto} × ${data.cantidad}</p>
-          <p class="text-xs text-gray-400 mt-2">Sesión: ${data.sesionId}</p>
-        </div>`;
-      verCarrito();
-    } catch (e) {
-      el.innerHTML = '<p class="text-red-500 text-center py-4">No se pudo conectar con la API</p>';
-    }
-  }
-
-  async function verCarrito() {
-    const sesionId = document.getElementById('sesion-id').value.trim() || 'sesion-001';
-    const el = document.getElementById('carrito-resultado');
-    try {
-      const data = await fetchJSON(`${API}/api/carrito/total?sesionId=${encodeURIComponent(sesionId)}`);
-      if (!data.items.length) {
-        el.innerHTML = '<p class="text-gray-400 text-center py-8">El carrito está vacío</p>';
-        return;
-      }
-      el.innerHTML = `
-        <div class="space-y-2">
-          ${data.items.map(i => `
-            <div class="flex justify-between text-sm border-b border-gray-50 pb-2">
-              <span class="text-gray-700">${i.nombre} × ${i.cantidad}</span>
-              <span class="font-semibold text-gray-900">$${Number(i.subtotal).toFixed(2)}</span>
-            </div>`).join('')}
-          <div class="flex justify-between font-bold text-gray-900 pt-2">
-            <span>Total (${data.total_items} items)</span>
-            <span class="text-lg">$${Number(data.total_precio).toFixed(2)}</span>
-          </div>
-        </div>`;
-    } catch (e) {
-      el.innerHTML = '<p class="text-red-500 text-center py-4">Error al obtener el carrito</p>';
-    }
-  }
-
-  async function vaciarCarrito() {
-    const sesionId = document.getElementById('sesion-id').value.trim() || 'sesion-001';
-    const el = document.getElementById('carrito-resultado');
-    try {
-      await fetch(`${API}/api/carrito/vaciar?sesionId=${encodeURIComponent(sesionId)}`, { method: 'DELETE' });
-      el.innerHTML = '<p class="text-gray-400 text-center py-8">Carrito vaciado</p>';
-    } catch (e) {
-      el.innerHTML = '<p class="text-red-500 text-center py-4">Error al vaciar el carrito</p>';
-    }
-  }
-
-  async function loadReportes() {
-    const container = document.getElementById('reportes-container');
-    container.innerHTML = '<div class="skeleton rounded-xl h-40"></div><div class="skeleton rounded-xl h-40"></div>';
-    try {
-      const [inv, cats] = await Promise.all([
-        fetchJSON(`${API}/api/reporte/inventario`),
-        fetchJSON(`${API}/api/reporte/categorias`)
-      ]);
-      container.innerHTML = `
-        <div class="border border-gray-100 rounded-xl p-5">
-          <h3 class="font-semibold text-gray-700 mb-4 text-sm uppercase tracking-wide">Resumen de inventario</h3>
-          <div class="grid grid-cols-2 gap-4">
-            <div><p class="text-xs text-gray-400">Total productos</p><p class="text-2xl font-bold text-gray-900">${inv.total_productos}</p></div>
-            <div><p class="text-xs text-gray-400">Disponibles</p><p class="text-2xl font-bold text-green-600">${inv.disponibles}</p></div>
-            <div><p class="text-xs text-gray-400">Agotados</p><p class="text-2xl font-bold text-red-500">${inv.agotados}</p></div>
-            <div><p class="text-xs text-gray-400">Precio promedio</p><p class="text-2xl font-bold text-gray-900">$${inv.precio_promedio}</p></div>
-            <div class="col-span-2"><p class="text-xs text-gray-400">Valor total inventario</p><p class="text-2xl font-bold text-gray-900">$${inv.valor_inventario}</p></div>
-          </div>
-        </div>
-        <div class="border border-gray-100 rounded-xl p-5">
-          <h3 class="font-semibold text-gray-700 mb-4 text-sm uppercase tracking-wide">Por categoría</h3>
-          <div class="space-y-3">
-            ${Object.entries(cats.categorias).map(([nombre, datos]) => `
-              <div class="flex items-center justify-between text-sm">
-                <div class="flex items-center gap-2">
-                  <span>${CATEGORY_ICONS[nombre] || '🏷️'}</span>
-                  <span class="text-gray-700 font-medium">${nombre}</span>
-                </div>
-                <div class="text-right">
-                  <span class="text-gray-900 font-semibold">${datos.total} items</span>
-                  <span class="text-xs text-gray-400 ml-2">$${datos.precio_promedio} prom.</span>
-                </div>
-              </div>`).join('')}
-          </div>
-          <p class="text-xs text-gray-400 mt-4">Total: ${cats.total_categorias} categorías</p>
-        </div>`;
-    } catch (e) {
-      container.innerHTML = '<div class="col-span-2 text-center py-8 text-red-400">Error al generar el reporte</div>';
-    }
-  }
-
-  // Carga inicial y refresco automático cada 30 segundos
   loadAll();
   setInterval(loadAll, 30000);
 </script>

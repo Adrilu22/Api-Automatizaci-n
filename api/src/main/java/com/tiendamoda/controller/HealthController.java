@@ -23,7 +23,10 @@ public class HealthController {
         this.activeRequests = activeRequestsGauge;
     }
 
-    @Operation(summary = "Estado del servicio y listado de endpoints disponibles")
+    @Operation(
+        summary = "Estado del servicio",
+        description = "Verifica que la API esté activa y devuelve el listado completo de todos los endpoints disponibles con su método HTTP."
+    )
     @GetMapping("/")
     public Map<String, Object> health() {
         activeRequests.incrementAndGet();
@@ -36,12 +39,14 @@ public class HealthController {
                     "version", "1.0.0",
                     "timestamp", LocalDateTime.now().toString(),
                     "endpoints", Map.of(
-                            "datos",      "/api/datos",
-                            "lento",      "/api/lento",
-                            "productos",  "/api/productos",
-                            "categorias", "/api/categorias",
-                            "buscar",     "/api/buscar?q={termino}",
-                            "metricas",   "/metrics"
+                            "datos",             "GET    /api/datos",
+                            "ventas",            "GET    /api/ventas",
+                            "clientes",          "GET    /api/clientes",
+                            "lento",             "GET    /api/lento",
+                            "metricas",          "GET    /metrics",
+                            "registrarVenta",    "POST   /api/ventas",
+                            "actualizarPremium", "PUT    /api/clientes/{id}/premium?premium=true|false",
+                            "cancelarVenta",     "DELETE /api/ventas/{id}"
                     )
             );
         } finally {

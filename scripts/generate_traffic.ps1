@@ -6,8 +6,8 @@ param(
     [int]$BurstSize = 1
 )
 
-$Endpoints = @("/", "/api/datos", "/api/productos", "/api/categorias", "/api/productos/1", "/api/lento", "/api/buscar?q=vestido", "/api/buscar?q=negro")
-$Weights   = @(15, 20, 20, 10, 10, 5, 10, 10)
+$Endpoints = @("/", "/api/datos", "/api/lento")
+$Weights   = @(25, 50, 25)
 
 function Write-Log($Message) {
     Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message"
